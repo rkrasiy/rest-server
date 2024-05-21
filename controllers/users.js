@@ -1,43 +1,69 @@
 
 const { response } = require('express');
+const bcryptjs = require('bcryptjs');
 
-const getUsers = (req, res = response) => {
+const User = require('../models/user');
 
-  const { page = 10, limit = 20 } = req.query;
+const getUsers = async (req, res = response) => {
+
+  const { offset = 5, limit = 5 } = req.query;
+  const _limit = isNaN(limit) ? 5 : Number(limit);
+  const _offset = isNaN(offset) ? 5 : Number(offset);
+
+  const query = {state: true};
+
+  const [total, users] = await Promise.all([
+    User.countDocuments(query),
+    User.find(query)
+      .skip(_offset)
+      .limit(_limit)
+  ]);
 
   res.json({
-    msg: 'get API - controller',
-    page,
-    limit
+    total,
+    items: users
   })
 }
 
-const updateUsers = (req, res) => {
+const updateUsers = async (req, res) => {
 
   const { id } = req.params;
+  const { _id, password, google, email, ...rest} = req.body;
 
-  res.json({
-    msg: 'put API - controller',
-    id
-  });
+  //TODO : validate userID
+
+    // Crypt password
+  if( password ){
+    const salt = bcryptjs.genSaltSync();
+    rest.password = bcryptjs.hashSync(password, salt);
+  }
+
+  const user = await User.findByIdAndUpdate(id, rest, { new: true });
+
+  res.json(user);
 }
 
-const newUser = (req, res) => {
+const newUser = async (req, res) => {
 
-  const { name, age, married, surname} = req.body;
+  const { name, email, password, role } = req.body;
+  const user = new User({ name, email, password, role });
 
-  res.status(201).json({
-    name,
-    age,
-    married,
-    surname
-  });
+  // Crypt password
+  const salt = bcryptjs.genSaltSync();
+  user.password = bcryptjs.hashSync(password, salt);
+
+  await user.save();
+
+
+  res.status(201).json(user);
 }
 
-const removeUser = (req, res) => {
-  res.json({
-    msg: 'delete API - controller'
-  });
+const removeUser = async (req, res) => {
+  const { id } = req.params;
+
+  // const user = await User.findByIdAndDelete( id );
+  const user = await User.findByIdAndUpdate(id, { state: false}, {new: true});
+  res.json(user);
 }
 
 module.exports = {
