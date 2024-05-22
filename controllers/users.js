@@ -61,8 +61,9 @@ const newUser = async (req, res) => {
 const removeUser = async (req, res) => {
   const { id } = req.params;
 
-  // const user = await User.findByIdAndDelete( id );
   const user = await User.findByIdAndUpdate(id, { state: false}, {new: true});
+
+  
   res.json(user);
 }
 
